@@ -19,7 +19,7 @@ This script is NOT intended for general comparison of imputation methods (for th
 
 NRMSE calculation:
 
-$\sum_\(sqrt{(Si-Oi)^2)}/(Oi^2)$
+$\sum_{sqrt(Si-Oi)^2}/(Oi^2)$
 
 
 1.	Jin, L., Y. Bi, C. Hu, J. Qu, S. Shen, X. Wang, and Y. Tian, A comparative study of evaluating missing value imputation methods in label-free proteomics. Sci Rep, 2021. 11(1): p. 1760.
