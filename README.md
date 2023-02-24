@@ -18,8 +18,7 @@ This script is NOT intended for general comparison of imputation methods (for th
 
 
 NRMSE calculation:
-
- NRMSE = \sqrt{\frac{1}{n}\Sigma_{i=1}^{n}{\Big(\frac{d_i -f_i}{\sigma_i}\Big)^2}}
+NRMSE = $\sqrt{\frac{1}{n}\Sigma_{i=1}^{n}{\Big(\frac{d_i -f_i}{\sigma_i}\Big)^2}}$
 
 
 
