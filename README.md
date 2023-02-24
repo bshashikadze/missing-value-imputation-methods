@@ -19,7 +19,7 @@ This script is NOT intended for general comparison of imputation methods (for th
 
 NRMSE calculation:
 
-$\(\sum_ (sqrt{(Si-Oi)^2}/(Oi^2)^2$
+$\(sum_ (sqrt{(Si-Oi)^2}/(Oi^2)^2$
 
 
 
