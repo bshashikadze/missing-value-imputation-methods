@@ -27,6 +27,8 @@ library(impute)
 
 
 ## read data and tidy (this is protein groups file from data-independent acquisition (DIA) proteomics)
+can be downloaded from ProteomeXchange Consortium via the PRIDE partner 
+repository, http://proteomecentral.proteomexchange.org; dataset id: PXD040305 (not public yet - 24.02.2023)
 ```{r}
 data_raw <- read.delim("proteingroups.txt") %>% 
   select(Genes, starts_with("LFQ")) %>% 
@@ -133,6 +135,11 @@ leftcensored_function <- function(data) {
 
 ## function which calculates RMSE 
 ```{r}
+# n_variable  -> how many genes will be randomly taken from an inital expression data which contains 5000 genes without missing values
+# imp_fn      -> which imputation function
+# varialbe_in -> variables in rows or in columns (rows = data is learned for each sample, columns=data is learned for each gene)
+# perc_na     -> what should be total percantage of missing values in a simulated data (which originally contained only valid values)
+
 RMSE_fn_generic <- function(raw_data=data_raw, n_variable = 4500, imp_fn, variable_in, perc_na = perc_missing_afterfiltering){
   
   
@@ -141,10 +148,9 @@ RMSE_fn_generic <- function(raw_data=data_raw, n_variable = 4500, imp_fn, variab
   drop_na() %>% 
   slice(sample(1:5000, n_variable, replace = F))
  
- 
   # randomly introduce NA values which mimics original data after filtering
   data_simulated_mis <- prodNA(data_valid, noNA = perc_na)
-  na_count <- sum(is.na(data_simulated_mis) == TRUE)
+  na_count           <- sum(is.na(data_simulated_mis) == TRUE)
 
   # variables are rows
   data_variable_in_row <- data_simulated_mis 
@@ -154,45 +160,42 @@ RMSE_fn_generic <- function(raw_data=data_raw, n_variable = 4500, imp_fn, variab
   t() %>% 
   as.data.frame() 
   
-  
   # case when variables are rows
   if (variable_in == "row") {
     
-    # simulated data where missing values are imputed
-    data_simulated_imputed <- imp_fn(data=data_variable_in_row) %>% 
+  # simulated data where missing values are imputed
+  data_simulated_imputed <- imp_fn(data=data_variable_in_row) %>% 
       rownames_to_column("Variable") %>% 
       pivot_longer(names_to = "Bioreplicate", values_to = "Intensity_with_imp", -Variable) 
     
-    # original data with all valid values
-    data_original <- data_valid %>% 
+  # original data with all valid values
+  data_original <- data_valid %>% 
       rownames_to_column("Variable") %>% 
       pivot_longer(names_to = "Bioreplicate", values_to = "Intensity_valid", -Variable) 
     
-    # combine two data
-    data_combined <- data_simulated_imputed %>% 
+  # combine two data
+  data_combined <- data_simulated_imputed %>% 
       left_join(data_original) 
     
   }
-  
-  
+
   # case when variables are columns
   if (variable_in == "column") {
     
-    # simulated data where missing values are imputed
-    data_simulated_imputed <- imp_fn(data=data_variable_in_col) %>% 
+  # simulated data where missing values are imputed
+  data_simulated_imputed <- imp_fn(data=data_variable_in_col) %>% 
       t() %>% 
       as.data.frame() %>% 
       rownames_to_column("Variable") %>% 
       pivot_longer(names_to = "Bioreplicate", values_to = "Intensity_with_imp", -Variable) 
     
-    # original data with all valid values
-    data_original <- data_valid %>% 
+  # original data with all valid values
+  data_original <- data_valid %>% 
       rownames_to_column("Variable") %>% 
       pivot_longer(names_to = "Bioreplicate", values_to = "Intensity_valid", -Variable) 
-
     
-    # combine two data
-    data_combined <- data_simulated_imputed %>% 
+  # combine two data
+  data_combined <- data_simulated_imputed %>% 
       left_join(data_original) 
     
   }
@@ -205,7 +208,7 @@ RMSE_fn_generic <- function(raw_data=data_raw, n_variable = 4500, imp_fn, variab
 
 
 ## calculate RMSE for all three imputation methods (also row- and column-wise)
-```{r}
+```{r message=FALSE, warning=FALSE}
 # number of replication
 n_iteration <- 5
 
@@ -225,21 +228,29 @@ rmse_left_col <- replicate(n_iteration, RMSE_fn_generic(imp_fn = leftcensored_fu
 
 ## combine imputation results and visualize
 ```{r}
-rmse_df <- data.frame(rmse_rf_row, rmse_rf_col, rmse_knn_row, rmse_knn_col, rmse_left_row, rmse_left_col) %>% 
-  mutate(iteration = seq_along(1:20)) %>% 
+data.frame(rmse_rf_row, rmse_rf_col, rmse_knn_row, rmse_knn_col, rmse_left_row, rmse_left_col) %>% 
+  mutate(iteration = seq_along(1:5)) %>% 
   rename_all(~str_replace(., "rmse_", "")) %>% 
   pivot_longer(names_to = "imputation", values_to = "RMSE", -iteration) %>% 
   mutate(imputation_name = case_when(imputation == "knn_col" | imputation == "knn_row" ~ "KNN",
                                      imputation == "rf_col"  | imputation == "rf_row"   ~ "RF",
-                                     imputation == "left_col"| imputation == "left_row"   ~ "Left-censored"))
-
-
-
-ggplot(data = rmse_df, aes(x=imputation, y = RMSE)) +
+                                     imputation == "left_col"| imputation == "left_row"   ~ "Left-censored")) %>% 
+ggplot(aes(x=imputation, y = RMSE)) +
   geom_point(size = 3) +
   theme_bw()+
-  stat_summary(fun = "median", colour = "red", size = 2, geom = "point")  +
+  stat_summary(fun = "mean", colour = "red", size = 2, geom = "point")  +
   facet_wrap(~imputation_name, scales = "free")
+```
+
+## RMSE
+```{r}
+data.frame(rmse_rf_row, rmse_rf_col, rmse_knn_row, rmse_knn_col, rmse_left_row, rmse_left_col) %>% 
+  rownames_to_column("row") %>% 
+  pivot_longer(names_to = "imputation", values_to = "rmse", -row) %>% 
+  group_by(imputation) %>% 
+  summarise(mean_rmse = mean(rmse)) %>% 
+  arrange(-desc(mean_rmse)) %>% 
+  mutate(imputation = str_remove(imputation, "rmse_"))
 ```
 
 
